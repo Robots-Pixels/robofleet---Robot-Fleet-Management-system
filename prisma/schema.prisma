@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+}
+
+enum RobotStatus {
+  IDLE
+  ACTIVE
+  ERROR
+}
+
+enum MissionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+}
+
+enum EventType {
+  CREATED
+  ASSIGNED
+  STARTED 
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id      String   @id @default(cuid())
+  supabaseUserId  String  @unique
+  username String @unique
+  displayname    String
+  role Role @default(OPERATOR) 
+  createdRobots Robot[]
+  createdMissions Mission[] @relation("MissionCreatedByUser")
+  updatedMissions Mission[] @relation("MissionUpdatedByUser")
+  triggeredMissionLogs MissionLog[] @relation("MissionLogTriggeredByUser")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Robot {
+  id      String   @id @default(cuid())
+  name String
+  status RobotStatus @default(IDLE)
+  createdById String
+  creator User @relation(fields: [createdById], references: [id])
+  mission Mission?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Mission {
+  id      String   @id @default(cuid())
+  name String
+  status MissionStatus @default(PENDING)
+  robotId String @unique
+  robot Robot @relation(fields: [robotId], references: [id]) 
+  creatorId String
+  creator User @relation(name: "MissionCreatedByUser", fields: [creatorId], references: [id])
+  updatedById String
+  updatedBy User @relation(name: "MissionUpdatedByUser", fields: [updatedById], references: [id])
+  missionLogs MissionLog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MissionLog {
+  id      Int   @id @default(autoincrement())
+  occuredAt DateTime @default(now())
+  eventType EventType
+  fromStatus MissionStatus
+  toStatus MissionStatus
+  triggeredById String
+  triggeredBy User @relation(name: "MissionLogTriggeredByUser", fields: [triggeredById], references: [id])
+  missionId String
+  mission Mission @relation(fields: [missionId], references: [id])
+}
